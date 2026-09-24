@@ -15,7 +15,10 @@ export default function ProductsPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [totalProducts, setTotalProducts] = useState(0);
+
   const [search, setSearch] = useState("");
+  const [category, setCategory] = useState("");
+  const [sortBy, setSortBy] = useState("");
 
   const requestIdRef = useRef(0);
 
@@ -40,9 +43,10 @@ export default function ProductsPage() {
           const skip = (currentPage - 1) * pageSize;
 
           const data = await getProducts(
-          pageSize,
-          skip,
-          search
+            pageSize,
+            skip,
+            search,
+            category
           );
 
           if (requestId !== requestIdRef.current) {
@@ -50,7 +54,25 @@ export default function ProductsPage() {
           }
 
           setProducts(data.products);
-          setTotalProducts(data.total);
+          const sortedProducts = [...data.products];
+
+if (sortBy === "price-asc") {
+  sortedProducts.sort((a, b) => a.price - b.price);
+}
+
+if (sortBy === "price-desc") {
+  sortedProducts.sort((a, b) => b.price - a.price);
+}
+
+if (sortBy === "rating-desc") {
+  sortedProducts.sort((a, b) => b.rating - a.rating);
+}
+
+if (sortBy === "stock-desc") {
+  sortedProducts.sort((a, b) => b.stock - a.stock);
+}
+
+setProducts(sortedProducts);
         } catch (err) {
           console.error(err);
 
@@ -72,7 +94,7 @@ export default function ProductsPage() {
     return () => {
       clearTimeout(timeoutId);
     };
-  }, [router, currentPage, pageSize, search]);
+  }, [router, currentPage, pageSize, search, category]);
 
   const handleLogout = () => {
     localStorage.removeItem("token");
@@ -117,11 +139,7 @@ export default function ProductsPage() {
       currentPage + 1
     );
 
-    for (
-      let page = startPage;
-      page <= endPage;
-      page++
-    ) {
+    for (let page = startPage; page <= endPage; page++) {
       pages.push(page);
     }
 
@@ -147,7 +165,6 @@ export default function ProductsPage() {
   return (
     <main className="min-h-screen bg-gray-100 p-4 sm:p-6">
       <div className="mx-auto max-w-7xl">
-
         {/* Header */}
         <div className="flex flex-col gap-4 rounded-xl bg-white p-5 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:p-6">
           <div>
@@ -171,8 +188,7 @@ export default function ProductsPage() {
 
         {/* Product List */}
         <div className="mt-6 rounded-xl bg-white p-4 shadow-sm sm:p-6">
-
-          {/* Title + Search */}
+          {/* Title + Search + Filter */}
           <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <h2 className="text-lg font-semibold text-gray-900">
@@ -184,26 +200,79 @@ export default function ProductsPage() {
               </p>
             </div>
 
-            <div className="w-full sm:w-72">
-              <label
-                htmlFor="product-search"
-                className="mb-1 block text-sm font-medium text-gray-700"
-              >
-                Search products
-              </label>
+            <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-end">
+              {/* Search */}
+              <div className="w-full sm:w-72">
+                <label
+                  htmlFor="product-search"
+                  className="mb-1 block text-sm font-medium text-gray-700"
+                >
+                  Search products
+                </label>
 
-              <input
-                id="product-search"
-                type="text"
-                value={search}
-                onChange={(event) => {
-                  setSearch(event.target.value);
-                  setCurrentPage(1);
-                }}
-                placeholder="Search products..."
-                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 outline-none placeholder:text-gray-400 focus:border-gray-400"
-              />
+                <input
+                  id="product-search"
+                  type="text"
+                  value={search}
+                  onChange={(event) => {
+                    setSearch(event.target.value);
+                    setCurrentPage(1);
+                  }}
+                  placeholder="Search products..."
+                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 outline-none placeholder:text-gray-400 focus:border-gray-400"
+                />
+              </div>
+
+              {/* Category Filter */}
+              <div className="w-full sm:w-48">
+                <label
+                  htmlFor="product-category"
+                  className="mb-1 block text-sm font-medium text-gray-700"
+                >
+                  Category
+                </label>
+
+                <select
+                  id="product-category"
+                  value={category}
+                  onChange={(event) => {
+                    setCategory(event.target.value);
+                    setCurrentPage(1);
+                  }}
+                  className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-gray-400"
+                >
+                  <option value="">All categories</option>
+                  <option value="beauty">Beauty</option>
+                  <option value="fragrances">Fragrances</option>
+                  <option value="furniture">Furniture</option>
+                  <option value="groceries">Groceries</option>
+                </select>
+              </div>
             </div>
+            <div className="w-full sm:w-48">
+  <label
+    htmlFor="product-sort"
+    className="mb-1 block text-sm font-medium text-gray-700"
+  >
+    Sort by
+  </label>
+
+  <select
+    id="product-sort"
+    value={sortBy}
+    onChange={(event) => {
+      setSortBy(event.target.value);
+      setCurrentPage(1);
+    }}
+    className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-gray-400"
+  >
+    <option value="">Default</option>
+    <option value="price-asc">Price: Low to High</option>
+    <option value="price-desc">Price: High to Low</option>
+    <option value="rating-desc">Rating: High to Low</option>
+    <option value="stock-desc">Stock: High to Low</option>
+  </select>
+</div>
           </div>
 
           {/* Loading State */}
@@ -233,7 +302,6 @@ export default function ProductsPage() {
                   {/* Desktop Table */}
                   <div className="hidden overflow-x-auto md:block">
                     <table className="w-full text-left text-sm">
-
                       <thead>
                         <tr className="border-b border-gray-200 text-gray-500">
                           <th className="px-4 py-3 font-medium">
@@ -264,7 +332,6 @@ export default function ProductsPage() {
                             key={product.id}
                             className="border-b border-gray-100 last:border-0"
                           >
-                            {/* Product */}
                             <td className="px-4 py-4">
                               <div className="flex items-center gap-3">
                                 <img
@@ -285,30 +352,25 @@ export default function ProductsPage() {
                               </div>
                             </td>
 
-                            {/* Category */}
                             <td className="px-4 py-4">
                               <span className="inline-flex rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-xs font-medium text-gray-600">
                                 {product.category}
                               </span>
                             </td>
 
-                            {/* Price */}
                             <td className="px-4 py-4 font-medium text-gray-900">
                               ${product.price}
                             </td>
 
-                            {/* Rating */}
                             <td className="px-4 py-4">
                               <span className="inline-flex items-center gap-1 font-medium text-yellow-500">
                                 <span className="text-sm">
                                   ★
                                 </span>
-
                                 {product.rating}
                               </span>
                             </td>
 
-                            {/* Stock */}
                             <td className="px-4 py-4">
                               <span className="inline-flex rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-xs font-medium text-gray-600">
                                 In Stock ({product.stock})
@@ -317,19 +379,16 @@ export default function ProductsPage() {
                           </tr>
                         ))}
                       </tbody>
-
                     </table>
                   </div>
 
                   {/* Mobile Cards */}
                   <div className="space-y-4 md:hidden">
-
                     {products.map((product) => (
                       <div
                         key={product.id}
                         className="rounded-xl border border-gray-200 p-4"
                       >
-                        {/* Product */}
                         <div className="flex items-center gap-3">
                           <img
                             src={product.thumbnail}
@@ -348,10 +407,7 @@ export default function ProductsPage() {
                           </div>
                         </div>
 
-                        {/* Details */}
                         <div className="mt-4 grid grid-cols-2 gap-3 border-t border-gray-100 pt-4">
-
-                          {/* Category */}
                           <div>
                             <p className="text-xs text-gray-500">
                               Category
@@ -362,7 +418,6 @@ export default function ProductsPage() {
                             </span>
                           </div>
 
-                          {/* Price */}
                           <div>
                             <p className="text-xs text-gray-500">
                               Price
@@ -373,7 +428,6 @@ export default function ProductsPage() {
                             </p>
                           </div>
 
-                          {/* Rating */}
                           <div>
                             <p className="text-xs text-gray-500">
                               Rating
@@ -385,7 +439,6 @@ export default function ProductsPage() {
                             </span>
                           </div>
 
-                          {/* Stock */}
                           <div>
                             <p className="text-xs text-gray-500">
                               Stock
@@ -395,20 +448,16 @@ export default function ProductsPage() {
                               In Stock ({product.stock})
                             </span>
                           </div>
-
                         </div>
                       </div>
                     ))}
-
                   </div>
 
                   {/* Pagination */}
                   {totalPages > 1 && (
                     <div className="mt-6 border-t border-gray-100 pt-5">
-
                       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-
-                        {/* Left - Showing */}
+                        {/* Showing */}
                         <div className="text-center text-sm text-gray-500 lg:text-left">
                           Showing{" "}
                           <span className="font-medium text-gray-900">
@@ -421,9 +470,8 @@ export default function ProductsPage() {
                           products
                         </div>
 
-                        {/* Center - Page Navigation */}
+                        {/* Page Navigation */}
                         <div className="flex items-center justify-center gap-1">
-
                           <button
                             type="button"
                             onClick={() =>
@@ -485,12 +533,10 @@ export default function ProductsPage() {
                           >
                             Next
                           </button>
-
                         </div>
 
-                        {/* Right - Page Size */}
+                        {/* Page Size */}
                         <div className="flex items-center justify-center gap-2 text-sm text-gray-500 lg:justify-end">
-
                           <span>Show</span>
 
                           <select
@@ -514,18 +560,14 @@ export default function ProductsPage() {
                           </select>
 
                           <span>per page</span>
-
                         </div>
-
                       </div>
-
                     </div>
                   )}
                 </>
               )}
             </>
           )}
-
         </div>
       </div>
     </main>

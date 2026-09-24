@@ -5,17 +5,18 @@ export const getProducts = async (
   limit: number = 10,
   skip: number = 0,
   search: string = "",
-  delay?: number
+  category: string = ""
 ): Promise<ProductListResponse> => {
   const endpoint = search.trim()
     ? `/products/search?q=${encodeURIComponent(search.trim())}`
-    : "/products";
+    : category
+      ? `/products/category/${encodeURIComponent(category)}`
+      : "/products";
 
   const response = await api.get<ProductListResponse>(endpoint, {
     params: {
       limit,
       skip,
-      ...(delay ? { delay } : {}),
     },
   });
 
