@@ -1,5 +1,5 @@
 import api from "@/lib/api";
-import type { ProductListResponse } from "@/types/product";
+import type { Product, ProductListResponse } from "@/types/product";
 
 export const getProducts = async (
   limit: number = 10,
@@ -19,6 +19,47 @@ export const getProducts = async (
       skip,
     },
   });
+
+  return response.data;
+};
+
+export const getProductById = async (
+  id: number
+): Promise<Product> => {
+  const response = await api.get<Product>(`/products/${id}`);
+
+  return response.data;
+};
+
+export const createProduct = async (
+  product: Partial<Product>
+): Promise<Product> => {
+  const response = await api.post<Product>(
+    "/products/add",
+    product
+  );
+
+  return response.data;
+};
+
+export const updateProduct = async (
+  id: number,
+  product: Partial<Product>
+): Promise<Product> => {
+  const response = await api.put<Product>(
+    `/products/${id}`,
+    product
+  );
+
+  return response.data;
+};
+
+export const deleteProduct = async (
+  id: number
+): Promise<Product> => {
+  const response = await api.delete<Product>(
+    `/products/${id}`
+  );
 
   return response.data;
 };
