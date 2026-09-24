@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getProducts } from "@/services/productService";
-import { Product } from "@/types/product";
+import type { Product } from "@/types/product";
 
 export default function ProductsPage() {
   const router = useRouter();
@@ -11,6 +11,12 @@ export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [totalProducts, setTotalProducts] = useState(0);
+
+  const totalPages = Math.ceil(totalProducts / pageSize);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -25,9 +31,14 @@ export default function ProductsPage() {
         setIsLoading(true);
         setError("");
 
-        const data = await getProducts(10, 0);
+        const skip = (currentPage - 1) * pageSize;
+
+        const data = await getProducts(pageSize, skip);
+
         setProducts(data.products);
-      } catch {
+        setTotalProducts(data.total);
+      } catch (err) {
+        console.error(err);
         setError("Failed to load products. Please try again.");
       } finally {
         setIsLoading(false);
@@ -35,16 +46,75 @@ export default function ProductsPage() {
     };
 
     fetchProducts();
-  }, [router]);
+  }, [router, currentPage, pageSize]);
 
   const handleLogout = () => {
     localStorage.removeItem("token");
     router.replace("/login");
   };
 
+  const handlePageChange = (page: number) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+    }
+  };
+
+  const handlePageSizeChange = (
+    event: React.ChangeEvent<HTMLSelectElement>
+  ) => {
+    const newPageSize = Number(event.target.value);
+
+    setPageSize(newPageSize);
+    setCurrentPage(1);
+  };
+
+  const getPageNumbers = (): (number | string)[] => {
+    const pages: (number | string)[] = [];
+
+    if (totalPages <= 7) {
+      for (let page = 1; page <= totalPages; page++) {
+        pages.push(page);
+      }
+
+      return pages;
+    }
+
+    pages.push(1);
+
+    if (currentPage > 3) {
+      pages.push("...");
+    }
+
+    const startPage = Math.max(2, currentPage - 1);
+    const endPage = Math.min(totalPages - 1, currentPage + 1);
+
+    for (let page = startPage; page <= endPage; page++) {
+      pages.push(page);
+    }
+
+    if (currentPage < totalPages - 2) {
+      pages.push("...");
+    }
+
+    pages.push(totalPages);
+
+    return pages;
+  };
+
+  const firstItem =
+    totalProducts === 0
+      ? 0
+      : (currentPage - 1) * pageSize + 1;
+
+  const lastItem = Math.min(
+    currentPage * pageSize,
+    totalProducts
+  );
+
   return (
     <main className="min-h-screen bg-gray-100 p-4 sm:p-6">
       <div className="mx-auto max-w-7xl">
+
         {/* Header */}
         <div className="flex flex-col gap-4 rounded-xl bg-white p-5 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:p-6">
           <div>
@@ -58,6 +128,7 @@ export default function ProductsPage() {
           </div>
 
           <button
+            type="button"
             onClick={handleLogout}
             className="w-full rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-gray-800 sm:w-auto"
           >
@@ -67,6 +138,7 @@ export default function ProductsPage() {
 
         {/* Product List */}
         <div className="mt-6 rounded-xl bg-white p-4 shadow-sm sm:p-6">
+
           <div className="mb-5">
             <h2 className="text-lg font-semibold text-gray-900">
               Products
@@ -77,33 +149,48 @@ export default function ProductsPage() {
             </p>
           </div>
 
-          {/* Loading State */}
+          {/* Loading */}
           {isLoading && (
             <div className="py-10 text-center text-sm text-gray-500">
               Loading products...
             </div>
           )}
 
-          {/* Error State */}
-          {error && (
-            <p className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600">
+          {/* Error */}
+          {!isLoading && error && (
+            <div className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600">
               {error}
-            </p>
+            </div>
           )}
 
-          {/* Product Data */}
+          {/* Products */}
           {!isLoading && !error && (
             <>
               {/* Desktop Table */}
               <div className="hidden overflow-x-auto md:block">
                 <table className="w-full text-left text-sm">
+
                   <thead>
                     <tr className="border-b border-gray-200 text-gray-500">
-                      <th className="px-4 py-3 font-medium">Product</th>
-                      <th className="px-4 py-3 font-medium">Category</th>
-                      <th className="px-4 py-3 font-medium">Price</th>
-                      <th className="px-4 py-3 font-medium">Rating</th>
-                      <th className="px-4 py-3 font-medium">Stock</th>
+                      <th className="px-4 py-3 font-medium">
+                        Product
+                      </th>
+
+                      <th className="px-4 py-3 font-medium">
+                        Category
+                      </th>
+
+                      <th className="px-4 py-3 font-medium">
+                        Price
+                      </th>
+
+                      <th className="px-4 py-3 font-medium">
+                        Rating
+                      </th>
+
+                      <th className="px-4 py-3 font-medium">
+                        Stock
+                      </th>
                     </tr>
                   </thead>
 
@@ -113,6 +200,7 @@ export default function ProductsPage() {
                         key={product.id}
                         className="border-b border-gray-100 last:border-0"
                       >
+
                         {/* Product */}
                         <td className="px-4 py-4">
                           <div className="flex items-center gap-3">
@@ -149,7 +237,10 @@ export default function ProductsPage() {
                         {/* Rating */}
                         <td className="px-4 py-4">
                           <span className="inline-flex items-center gap-1 font-medium text-yellow-500">
-                            <span className="text-sm">★</span>
+                            <span className="text-sm">
+                              ★
+                            </span>
+
                             {product.rating}
                           </span>
                         </td>
@@ -160,20 +251,24 @@ export default function ProductsPage() {
                             In Stock ({product.stock})
                           </span>
                         </td>
+
                       </tr>
                     ))}
                   </tbody>
+
                 </table>
               </div>
 
               {/* Mobile Cards */}
               <div className="space-y-4 md:hidden">
+
                 {products.map((product) => (
                   <div
                     key={product.id}
                     className="rounded-xl border border-gray-200 p-4"
                   >
-                    {/* Product Header */}
+
+                    {/* Product */}
                     <div className="flex items-center gap-3">
                       <img
                         src={product.thumbnail}
@@ -192,52 +287,167 @@ export default function ProductsPage() {
                       </div>
                     </div>
 
-                    {/* Product Information */}
+                    {/* Details */}
                     <div className="mt-4 grid grid-cols-2 gap-3 border-t border-gray-100 pt-4">
-                      {/* Category */}
+
                       <div>
-                        <p className="text-xs text-gray-500">Category</p>
+                        <p className="text-xs text-gray-500">
+                          Category
+                        </p>
 
                         <span className="mt-1 inline-flex rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-xs font-medium text-gray-600">
                           {product.category}
                         </span>
                       </div>
 
-                      {/* Price */}
                       <div>
-                        <p className="text-xs text-gray-500">Price</p>
+                        <p className="text-xs text-gray-500">
+                          Price
+                        </p>
 
                         <p className="mt-1 text-sm font-medium text-gray-900">
                           ${product.price}
                         </p>
                       </div>
 
-                      {/* Rating */}
                       <div>
-                        <p className="text-xs text-gray-500">Rating</p>
-
-                        <p className="mt-1 text-sm font-medium text-yellow-500">
-                          <span className="inline-flex items-center gap-1">
-                            <span className="text-sm">★</span>
-                            {product.rating}
-                          </span>
+                        <p className="text-xs text-gray-500">
+                          Rating
                         </p>
+
+                        <span className="mt-1 inline-flex items-center gap-1 text-sm font-medium text-yellow-500">
+                          <span>★</span>
+                          {product.rating}
+                        </span>
                       </div>
 
-                      {/* Stock */}
                       <div>
-                        <p className="text-xs text-gray-500">Stock</p>
+                        <p className="text-xs text-gray-500">
+                          Stock
+                        </p>
 
                         <span className="mt-1 inline-flex rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-xs font-medium text-gray-600">
                           In Stock ({product.stock})
                         </span>
                       </div>
+
                     </div>
                   </div>
                 ))}
+
               </div>
+
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div className="mt-6 border-t border-gray-100 pt-5">
+
+                  <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+
+                    {/* Left */}
+                    <div className="text-center text-sm text-gray-500 lg:text-left">
+                      Showing{" "}
+                      <span className="font-medium text-gray-900">
+                        {firstItem}–{lastItem}
+                      </span>{" "}
+                      of{" "}
+                      <span className="font-medium text-gray-900">
+                        {totalProducts}
+                      </span>{" "}
+                      products
+                    </div>
+
+                    {/* Center */}
+                    <div className="flex items-center justify-center gap-1">
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          handlePageChange(currentPage - 1)
+                        }
+                        disabled={currentPage === 1}
+                        className="rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        Previous
+                      </button>
+
+                      {getPageNumbers().map((page, index) => {
+                        if (typeof page === "string") {
+                          return (
+                            <span
+                              key={`ellipsis-${index}`}
+                              className="px-1 text-sm text-gray-400"
+                            >
+                              ...
+                            </span>
+                          );
+                        }
+
+                        return (
+                          <button
+                            type="button"
+                            key={page}
+                            onClick={() =>
+                              handlePageChange(page)
+                            }
+                            className={`h-9 min-w-9 rounded-lg px-2 text-sm font-medium ${
+                              currentPage === page
+                                ? "bg-gray-900 text-white"
+                                : "text-gray-600 hover:bg-gray-100"
+                            }`}
+                          >
+                            {page}
+                          </button>
+                        );
+                      })}
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          handlePageChange(currentPage + 1)
+                        }
+                        disabled={currentPage === totalPages}
+                        className="rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        Next
+                      </button>
+
+                    </div>
+
+                    {/* Right */}
+                    <div className="flex items-center justify-center gap-2 text-sm text-gray-500 lg:justify-end">
+
+                      <span>Show</span>
+
+                      <select
+                        value={pageSize}
+                        onChange={handlePageSizeChange}
+                        className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 outline-none focus:border-gray-400"
+                      >
+                        <option value="10">
+                          10
+                        </option>
+
+                        <option value="20">
+                          20
+                        </option>
+
+                        <option value="50">
+                          50
+                        </option>
+                      </select>
+
+                      <span>per page</span>
+
+                    </div>
+
+                  </div>
+
+                </div>
+              )}
+
             </>
           )}
+
         </div>
       </div>
     </main>
