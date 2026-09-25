@@ -1,32 +1,72 @@
 import api from "@/lib/api";
-import type { Product, ProductListResponse } from "@/types/product";
+import type {
+  GetProductsOptions,
+  Product,
+  ProductCategory,
+  ProductListResponse,
+} from "@/types/product";
 
-export const getProducts = async (
-  limit: number = 10,
-  skip: number = 0,
-  search: string = "",
-  category: string = ""
-): Promise<ProductListResponse> => {
-  const endpoint = search.trim()
-    ? `/products/search?q=${encodeURIComponent(search.trim())}`
-    : category
-      ? `/products/category/${encodeURIComponent(category)}`
-      : "/products";
+type RequestOptions = {
+  signal?: AbortSignal;
+};
+
+export const getProducts = async ({
+  limit = 10,
+  skip = 0,
+  search = "",
+  category = "",
+  sortBy,
+  order = "asc",
+  delay = 0,
+  signal,
+}: GetProductsOptions & RequestOptions = {}): Promise<ProductListResponse> => {
+  const trimmedSearch = search.trim();
+
+  let endpoint = "/products";
+
+  if (trimmedSearch) {
+    endpoint = "/products/search";
+  } else if (category) {
+    endpoint = `/products/category/${encodeURIComponent(category)}`;
+  }
 
   const response = await api.get<ProductListResponse>(endpoint, {
     params: {
       limit,
       skip,
+      ...(trimmedSearch ? { q: trimmedSearch } : {}),
+      ...(sortBy ? { sortBy, order } : {}),
+      ...(delay > 0 ? { delay } : {}),
     },
+    signal,
   });
 
   return response.data;
 };
 
+export const getCategories = async (
+  options: RequestOptions = {}
+): Promise<ProductCategory[]> => {
+  const response = await api.get<ProductCategory[]>(
+    "/products/categories",
+    {
+      signal: options.signal,
+    }
+  );
+
+  return response.data;
+};
+
 export const getProductById = async (
-  id: number
+  id: number,
+  options: RequestOptions = {}
 ): Promise<Product> => {
-  const response = await api.get<Product>(`/products/${id}`);
+  const response = await api.get<Product>(
+    `/products/${id}`,
+    {
+      signal: options.signal,
+    }
+  );
 
   return response.data;
 };

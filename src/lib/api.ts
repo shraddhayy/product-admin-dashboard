@@ -7,15 +7,17 @@ const api = axios.create({
   },
 });
 
+/*
+ * Add the login token to every API request.
+ */
 api.interceptors.request.use(
   (config) => {
-    const token =
-      typeof window !== "undefined"
-        ? localStorage.getItem("token")
-        : null;
+    if (typeof window !== "undefined") {
+      const token = localStorage.getItem("token");
 
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
     }
 
     return config;
@@ -23,14 +25,25 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
+/*
+ * Handle API errors in one place.
+ */
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
-      console.error("Unauthorized request");
+    // Keep cancelled requests untouched.
+    if (axios.isCancel(error)) {
+      return Promise.reject(error);
     }
 
-    return Promise.reject(error);
+    const message =
+      error.response?.data?.message ||
+      error.message ||
+      "Something went wrong. Please try again.";
+
+    const normalizedError = new Error(message);
+
+    return Promise.reject(normalizedError);
   }
 );
 
